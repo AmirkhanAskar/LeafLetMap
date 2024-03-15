@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map with CSV Data</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .leaflet-control {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            padding: 5px 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            margin-top: 10px;
+            margin-right: 10px;
+            z-index: 1;
+        }
+        #specified-time-table {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            z-index: 1;
+        }
+    </style>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<div id="specified-time-table"></div>
+<script>
+    // Create the map
+    var map = L.map('map', { dragging: true }).setView([48.0196, 66.9237], 6);
+
+    // Add the tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data &copy; OpenStreetMap contributors',
+        minZoom: 4,
+    }).addTo(map);
+
+    // Устанавливаем границы карты
+    var southWest = L.latLng(40, 46),
+    northEast = L.latLng(55, 88),
+    bounds = L.latLngBounds(southWest, northEast);
+
+
+    map.setMaxBounds(bounds);
+    map.on('drag', function() {
+        map.panInsideBounds(bounds, { animate: false });
+    });
+    map.on('dragend', function() {
+        map.panInsideBounds(bounds, { animate: true });
+    });
+
+    // Устанавливаем минимальный масштаб карты
+    map.setMinZoom(6);
+
+    // Load the GeoJSON boundaries
+    Promise.all([
+        fetch('russia.geojson'),
+        fetch('mongolia.geojson'),
+        fetch('uzbekistan.geojson'),
+        fetch('tajikistan.geojson'),
+        fetch('turkmenistan.geojson'),
+        fetch('azerbaijan.geojson'),
+        fetch('georgia.geojson'),
+        fetch('china.geojson'),
+        fetch('kyrgyzstan.geojson'),
+    ])
+        .then(responses => Promise.all(responses.map(response => response.json())))
+        .then(data => {
+            data.forEach(geojsonData => {
+                L.geoJSON(geojsonData, {
+                    style: function (feature) {
+                        if (feature.properties.boundary === 'administrative' && feature.properties.admin_level === '2') {
+                            return {
+                                color: 'blue',
+                                weight: 2
+                            };
+                        } else {
+                            return {
+                                color: 'black',
+                                weight: 0
+                            };
+                        }
+                    }
+                }).addTo(map);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching geojson data:', error);
+        });
+
+    // Specify the time and round it to the nearest hour
+    var specifiedTime = moment().startOf('hour');
+    document.getElementById('specified-time-table').innerHTML = '<strong>Specified Time: </strong>' + specifiedTime.format("DD.MM.YYYY HH:mm");
+
+    // Define the stations
+    var stations = {
+        28676: { name: "Петропавловск", lat: 54.792378, lng: 69.117425 },
+        28879: { name: "Кокшетау", lat: 53.321667, lng: 69.376944 },
+        28952: { name: "Костанай", lat: 53.2375, lng: 63.739167 },
+        35108: { name: "Уральск", lat: 51.256944, lng: 51.29 },
+        35188: { name: "Нур-Султан", lat: 51.170314, lng: 71.393983 },
+        35229: { name: "Актобе", lat: 50.258333, lng: 57.222778 },
+        35358: { name: "Торгай", lat: 49.634722, lng: 63.634444 },
+        35394: { name: "Караганда", lat: 49.819861, lng: 73.149778 },
+        35633: { name: "Шалкар", lat: 47.848333, lng: 59.591111 },
+        35671: { name: "Жезказган", lat: 47.772839, lng: 67.690361 },
+        35700: { name: "Атырау", lat: 47.116667, lng: 51.883333 },
+        36003: { name: "Павлодар", lat: 52.338167, lng: 77.120667 },
+        36177: { name: "Семей", lat: 50.417903, lng: 80.290608 },
+        36403: { name: "Усть-Каменогорск", lat: 49.927447, lng: 82.588333 },
+        36770: { name: "Талдыкорган", lat: 45.0275, lng: 78.4375 },
+        36870: { name: "Алматы", lat: 43.239417, lng: 76.932861 },
+        38062: { name: "Кызылорда", lat: 44.824833, lng: 65.527306 },
+        38111: { name: "Актау", lat: 43.604722, lng: 51.2275 },
+        38198: { name: "Туркестан", lat: 43.272, lng: 68.191389 },
+        38328: { name: "Шымкент", lat: 42.347778, lng: 69.71 },
+        38341: { name: "Тараз", lat: 42.867658, lng: 71.293542 }
+    };
+
+    // Define marker icons
+    var rainIcon = L.icon({
+        iconUrl: 'images/heavyrain.png',
+        iconSize: [40, 72],
+        iconAnchor: [25, 82],
+        popupAnchor: [1, -34],
+    });
+
+    var clearIcon = L.icon({
+        iconUrl: 'images/clear.png',
+        iconSize: [70, 72],
+        iconAnchor: [25, 82],
+        popupAnchor: [1, -34],
+    });
+
+    var snowIcon = L.icon({
+        iconUrl: 'images/snow.png',
+        iconSize: [70, 72],
+        iconAnchor: [25, 82],
+        popupAnchor: [1, -34],
+    });
+
+    // Load CSV data and display markers
+    Papa.parse('nowcasting_2024-03-09.csv', {
+        download: true,
+        delimiter: ";",
+        header: true,
+
+        complete: function (results) {
+            var data = results.data;
+
+            for (var stationId in stations) {
+                (function (currentStationId) {
+                    var station = stations[currentStationId];
+                    var markerIcon = clearIcon;
+                    var closestData = null;
+                    var closestDiff = Infinity;
+
+                    var nightTempMin = null;
+                    var dayTempMax = null;
+                    var nightPrecipSum = 0;
+                    var dayPrecipSum = 0;
+                    var nightWindUMax = null;
+                    var dayWindUMax = null;
+                    var nightWindVMax = null;
+                    var dayWindVMax = null;
+                    var nightPressureSum = 0;
+                    var dayPressureSum = 0;
+                    var nightCount = 0;
+                    var dayCount = 0;
+
+                    for (var i = 0; i < data.length; i++) {
+                        var rowData = data[i];
+                        var date = moment(rowData.data, "YYYY.MM.DD HH:mm:ss").startOf('hour');
+                        var hour = date.hour();
+
+                        if (rowData.stn_id == currentStationId) {
+                            if (hour >= 16 || hour < 3) { // Night
+                                if (nightTempMin === null || parseFloat(rowData.temp) < nightTempMin) {
+                                    nightTempMin = parseFloat(rowData.temp);
+                                }
+                                nightPrecipSum += parseFloat(rowData.rain);
+                                if (isNaN(parseFloat(rowData.windU)) || parseFloat(rowData.windU) > nightWindUMax) {
+                                    nightWindUMax = parseFloat(rowData.windU);
+                                }
+                                if (isNaN(parseFloat(rowData.windV)) || parseFloat(rowData.windV) > nightWindVMax) {
+                                    nightWindVMax = parseFloat(rowData.windV);
+                                }
+                                nightPressureSum += parseFloat(rowData.pressure);
+                                nightCount++;
+                            } else { // Day
+                                if (dayTempMax === null || parseFloat(rowData.temp) > dayTempMax) {
+                                    dayTempMax = parseFloat(rowData.temp);
+                                }
+                                dayPrecipSum += parseFloat(rowData.rain);
+                                if (isNaN(parseFloat(rowData.windU)) || parseFloat(rowData.windU) > dayWindUMax) {
+                                    dayWindUMax = parseFloat(rowData.windU);
+                                }
+                                if (isNaN(parseFloat(rowData.windV)) || parseFloat(rowData.windV) > dayWindVMax) {
+                                    dayWindVMax = parseFloat(rowData.windV);
+                                }
+                                dayPressureSum += parseFloat(rowData.pressure);
+                                dayCount++;
+                            }
+                        }
+                    }
+
+                    var nightPressureAvg = nightCount > 0 ? nightPressureSum / nightCount : null;
+                    var dayPressureAvg = dayCount > 0 ? dayPressureSum / dayCount : null;
+
+                    if (specifiedTime.hour() >= 4 && specifiedTime.hour() < 16) {
+                        markerIcon = dayPrecipSum > 0.4 && dayTempMax < -1 ? snowIcon : (dayPrecipSum > 0.4 && dayTempMax > -1 ? rainIcon : clearIcon);
+                    } else {
+                        markerIcon = nightPrecipSum > 0.4 && nightTempMin < -1 ? snowIcon : (nightPrecipSum > 0.4 && nightTempMin > -1 ? rainIcon : clearIcon);
+                    }
+
+                    var temperature = specifiedTime.hour() >= 4 && specifiedTime.hour() < 16 ? dayTempMax : nightTempMin;
+                    var precipitation = specifiedTime.hour() >= 4 && specifiedTime.hour() < 16 ? dayPrecipSum : nightPrecipSum;
+                    var windUMax = specifiedTime.hour() >= 4 && specifiedTime.hour() < 16 ? dayWindUMax : nightWindUMax;
+                    var windVMax = specifiedTime.hour() >= 4 && specifiedTime.hour() < 16 ? dayWindVMax : nightWindVMax;
+                    var pressure = specifiedTime.hour() >= 4 && specifiedTime.hour() < 16 ? dayPressureAvg : nightPressureAvg;
+
+                    var iconWithTemperature = '<div style="background-color: rgba(0, 0, 0, 0);"><img src="' + markerIcon.options.iconUrl + '" style="width: 40px; height: 40px;"><span style="font-size: 12px; margin-left: 5px;">' + temperature.toFixed(2) + '°C</span></div>';
+
+                    var marker = L.marker([station.lat, station.lng], {
+                        icon: L.divIcon({ html: iconWithTemperature, iconSize: [1, 1] })
+                    }).addTo(map);
+
+                    var popupContent = '<strong>Station: ' + station.name + '</strong><br><br>';
+                    popupContent += '<em>Specified Time: ' + specifiedTime.format("DD.MM.YYYY HH:mm") + '</em><br><br>';
+                    popupContent += 'Temperature: ' + (temperature !== null ? temperature.toFixed(2) + '°C' : 'N/A') + '<br>' +
+                        'Precipitation: ' + (precipitation !== null ? precipitation.toFixed(2) + 'mm' : 'N/A') + '<br>' +
+                        'Max. Wind U at Night: ' + (nightWindUMax !== null ? nightWindUMax.toFixed(2) + 'm/s' : 'N/A') + '<br>' +
+                        'Max. Wind V at Night: ' + (nightWindVMax !== null ? nightWindVMax.toFixed(2) + 'm/s' : 'N/A') + '<br>' +
+                        'Max. Wind U during the Day: ' + (dayWindUMax !== null ? dayWindUMax.toFixed(2) + 'm/s' : 'N/A') + '<br>' +
+                        'Max. Wind V during the Day: ' + (dayWindVMax !== null ? dayWindVMax.toFixed(2) + 'm/s' : 'N/A') + '<br>' +
+                        'Pressure: ' + (pressure !== null ? pressure.toFixed(2) + 'hPa' : 'N/A') + '<br><br>';
+
+                    // Add additional values for the day
+                    popupContent += 'Min. Temperature at Night: ' + (nightTempMin !== null ? nightTempMin.toFixed(2) + '°C' : 'N/A') + '<br>' +
+                        'Max. Temperature during the Day: ' + (dayTempMax !== null ? dayTempMax.toFixed(2) + '°C' : 'N/A') + '<br>' +
+                        'Total Precipitation at Night: ' + (nightPrecipSum !== null ? nightPrecipSum.toFixed(2) + 'mm' : 'N/A') + '<br>' +
+                        'Total Precipitation during the Day: ' + (dayPrecipSum !== null ? dayPrecipSum.toFixed(2) + 'mm' : 'N/A') + '<br>' +
+                        'Avg. Pressure at Night: ' + (nightPressureAvg !== null ? nightPressureAvg.toFixed(2) + 'hPa' : 'N/A') + '<br>' +
+                        'Avg. Pressure during the Day: ' + (dayPressureAvg !== null ? dayPressureAvg.toFixed(2) + 'hPa' : 'N/A') + '<br><br>';
+
+                    marker.bindPopup(popupContent);
+                })(stationId);
+            }
+        }
+    });
+</script>
+</body>
+</html>
